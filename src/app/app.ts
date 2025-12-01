@@ -15,7 +15,6 @@ import { CoverPage } from './cover-page/cover-page';
 export class App {
   title = signal('PDF POC');
 
-  // Single PDF content
   pdfContent: string = 'This is the main PDF content.';
 
   async generatePDF() {
@@ -23,7 +22,7 @@ export class App {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // --- COVER PAGE (NO HEADER/FOOTER) ---
+    // --- COVER PAGE ---
     const coverElement = document.getElementById('cover-page')!;
     const coverCanvas = await html2canvas(coverElement);
     const coverImg = coverCanvas.toDataURL('image/png');
@@ -32,49 +31,50 @@ export class App {
     // Add watermark on cover page
     this.addWatermark(doc, 'SAMPLE WATERMARK');
 
-    // --- SINGLE PDF PAGE WITH HEADER/FOOTER ---
-    doc.addPage();
+    // --- ADD 10 CONTENT PAGES WITH HEADER, FOOTER, WATERMARK ---
+    const numberOfPages = 10;
+    for (let i = 1; i <= numberOfPages; i++) {
+      doc.addPage();
 
-    // HEADER
-    const headerHeight = 50;
-    doc.setFillColor(52, 152, 219); // Blue header
-    doc.rect(0, 0, pageWidth, headerHeight, 'F'); // filled rectangle
-    doc.setFontSize(14);
-    doc.setTextColor(255, 255, 255); // white text
-    doc.text('Header - Angular PDF POC', pageWidth / 2, 30, { align: 'center' });
+      // HEADER
+      const headerHeight = 50;
+      doc.setFillColor(52, 152, 219); // Blue header
+      doc.rect(0, 0, pageWidth, headerHeight, 'F');
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`Header - Page ${i}`, pageWidth / 2, 30, { align: 'center' });
 
-    // MAIN CONTENT
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0); // black text
-    doc.text(this.pdfContent, 40, 100);
+      // MAIN CONTENT
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`${this.pdfContent} - Page ${i}`, 40, 100);
 
-    // FOOTER
-    const footerHeight = 40;
-    doc.setFillColor(52, 152, 219); // Blue footer
-    doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, 'F');
-    doc.setFontSize(12);
-    doc.setTextColor(255, 255, 255);
-    doc.text('Footer - Angular PDF POC', pageWidth / 2, pageHeight - 15, { align: 'center' });
+      // FOOTER
+      const footerHeight = 40;
+      doc.setFillColor(52, 152, 219);
+      doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, 'F');
+      doc.setFontSize(12);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`Footer - Page ${i}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-    // Add watermark on PDF page
-    this.addWatermark(doc, 'SAMPLE WATERMARK');
+      // WATERMARK
+      this.addWatermark(doc, 'SAMPLE WATERMARK');
+    }
 
-    // Save PDF
-    doc.save('pdf-with-cover-header-footer-watermark.pdf');
+    doc.save('pdf-with-cover-and-10-pages-watermark.pdf');
   }
 
-  // Utility function to add watermark
   private addWatermark(doc: jsPDF, text: string) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
     doc.setFontSize(60);
-    doc.setTextColor(150, 150, 150); // Gray color
-    doc.setGState(new (doc as any).GState({ opacity: 0.2 })); // 20% opacity
+    doc.setTextColor(150, 150, 150);
+    doc.setGState(new (doc as any).GState({ opacity: 0.2 }));
     doc.text(text, pageWidth / 2, pageHeight / 2, {
       align: 'center',
       angle: 45
     });
-    doc.setGState(new (doc as any).GState({ opacity: 1 })); // Reset opacity
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
   }
 }
