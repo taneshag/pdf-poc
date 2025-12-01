@@ -1,0 +1,19 @@
+<app-header></app-header>
+
+<div class="container mt-4">
+  <h1 class="text-center">{{ title() }}</h1>
+
+  <!-- Cover Page -->
+  <div id="cover-page" class="cover-box text-center p-5 mb-4">
+    <h2>Cover Page</h2>
+    <p>This is the cover page and will appear above all PDFs</p>
+  </div>
+
+  <div class="text-center mt-4">
+    <button class="btn btn-success" (click)="generatePDF()">
+      Generate PDF for 100 PDFs
+    </button>
+  </div>
+</div>
+
+<app-footer></app-footer>
