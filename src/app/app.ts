@@ -15,39 +15,66 @@ import { CoverPage } from './cover-page/cover-page';
 export class App {
   title = signal('PDF POC');
 
+  // Single PDF content
+  pdfContent: string = 'This is the main PDF content.';
+
   async generatePDF() {
     const doc = new jsPDF('p', 'pt', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // --- COVER PAGE ---
+    // --- COVER PAGE (NO HEADER/FOOTER) ---
     const coverElement = document.getElementById('cover-page')!;
     const coverCanvas = await html2canvas(coverElement);
     const coverImg = coverCanvas.toDataURL('image/png');
     doc.addImage(coverImg, 'PNG', 0, 0, pageWidth, pageHeight);
 
-    // --- HEADER (Colored) ---
+    // Add watermark on cover page
+    this.addWatermark(doc, 'SAMPLE WATERMARK');
+
+    // --- SINGLE PDF PAGE WITH HEADER/FOOTER ---
+    doc.addPage();
+
+    // HEADER
     const headerHeight = 50;
-    doc.setFillColor(52, 152, 219); // Blue color
-    doc.rect(0, 0, pageWidth, headerHeight, 'F'); // Draw filled rectangle
+    doc.setFillColor(52, 152, 219); // Blue header
+    doc.rect(0, 0, pageWidth, headerHeight, 'F'); // filled rectangle
     doc.setFontSize(14);
-    doc.setTextColor(255, 255, 255); // White text
+    doc.setTextColor(255, 255, 255); // white text
     doc.text('Header - Angular PDF POC', pageWidth / 2, 30, { align: 'center' });
 
-    // --- MAIN CONTENT ---
+    // MAIN CONTENT
     doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0); // Black text
-    doc.text('This is the main PDF content.', 40, 100);
+    doc.setTextColor(0, 0, 0); // black text
+    doc.text(this.pdfContent, 40, 100);
 
-    // --- FOOTER (Colored) ---
+    // FOOTER
     const footerHeight = 40;
-    doc.setFillColor(52, 152, 219); // Blue color
-    doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, 'F'); // Filled footer
+    doc.setFillColor(52, 152, 219); // Blue footer
+    doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, 'F');
     doc.setFontSize(12);
     doc.setTextColor(255, 255, 255);
     doc.text('Footer - Angular PDF POC', pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-    // Save single PDF
-    doc.save('single-pdf-with-colored-header-footer.pdf');
+    // Add watermark on PDF page
+    this.addWatermark(doc, 'SAMPLE WATERMARK');
+
+    // Save PDF
+    doc.save('pdf-with-cover-header-footer-watermark.pdf');
+  }
+
+  // Utility function to add watermark
+  private addWatermark(doc: jsPDF, text: string) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    doc.setFontSize(60);
+    doc.setTextColor(150, 150, 150); // Gray color
+    doc.setGState(new (doc as any).GState({ opacity: 0.2 })); // 20% opacity
+    doc.text(text, pageWidth / 2, pageHeight / 2, {
+      align: 'center',
+      angle: 45
+    });
+    doc.setGState(new (doc as any).GState({ opacity: 1 })); // Reset opacity
   }
 }
