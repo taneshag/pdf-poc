@@ -2,10 +2,8 @@ import { Component } from '@angular/core';
 
 @Component({
   selector: 'app-cover-page',
-  standalone: false,
   templateUrl: './cover-page.html',
-  styleUrl: './cover-page.css',
+  styleUrls: ['./cover-page.css'],
+  standalone: true
 })
-export class CoverPage {
-
-}
+export class CoverPage {}
