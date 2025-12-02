@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { PDFDocument, rgb, degrees } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -24,195 +24,163 @@ export class App {
     }
   }
 
-async generatePDF() {
-  if (!this.selectedFile) {
-    alert('Please select a PDF file first');
-    return;
-  }
+  async generatePDF() {
+    if (!this.selectedFile) {
+      alert('Please select a PDF file first');
+      return;
+    }
 
-  try {
-    const existingPdfBytes = await this.selectedFile.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(existingPdfBytes);
-    const pages = pdfDoc.getPages();
+    try {
+      const existingPdfBytes = await this.selectedFile.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+      const originalPages = pdfDoc.getPages().slice(); // clone list before modifying
 
-    // Load watermark image
-    const watermarkImage = await this.loadWatermarkImage(pdfDoc);
-    const watermarkDims = { width: watermarkImage.width, height: watermarkImage.height };
+      // Load watermark
+      const watermarkImage = await this.loadWatermarkImage(pdfDoc);
+      const watermarkDims = { width: watermarkImage.width, height: watermarkImage.height };
 
-    const coverPage = pdfDoc.insertPage(0, [595.28, 841.89]); // A4 cover page at start
-    const { width: coverWidth, height: coverHeight } = coverPage.getSize();
+      // -----------------------------
+      // ⭐ 1. CREATE COVER PAGE
+      // -----------------------------
+      const coverPage = pdfDoc.insertPage(0, [595.28, 841.89]);
+      const { width: coverWidth, height: coverHeight } = coverPage.getSize();
 
-    // --- COVER PAGE BACKGROUND ---
-    coverPage.drawRectangle({
-      x: 0,
-      y: 0,
-      width: coverWidth,
-      height: coverHeight,
-      color: rgb(0.9, 0.9, 0.9), // change background color here
-    });
+      coverPage.drawRectangle({
+        x: 0, y: 0, width: coverWidth, height: coverHeight,
+        color: rgb(0.9, 0.9, 0.9)
+      });
 
-    // --- COVER PAGE TITLE ---
-    coverPage.drawText('COVER PAGE TITLE', {
-      x: coverWidth / 2 - 120,
-      y: coverHeight / 2 + 100,
-      size: 30,
-      color: rgb(1, 1, 1),
-    });
+      coverPage.drawText('COVER PAGE TITLE', {
+        x: coverWidth / 2 - 120,
+        y: coverHeight / 2 + 100,
+        size: 30,
+        color: rgb(1, 1, 1),
+      });
 
-    // --- COVER PAGE SUBTITLE ---
-    coverPage.drawText('This is the subtitle of the cover page', {
-      x: coverWidth / 2 - 140,
-      y: coverHeight / 2 + 60,
-      size: 16,
-      color: rgb(1, 1, 1),
-    });
+      coverPage.drawText('This is the subtitle of the cover page', {
+        x: coverWidth / 2 - 140,
+        y: coverHeight / 2 + 60,
+        size: 16,
+        color: rgb(1, 1, 1),
+      });
 
-    // --- COVER PAGE CENTERED WATERMARK ---
-    coverPage.drawImage(watermarkImage, {
-      x: (coverWidth - watermarkDims.width) / 2,
-      y: (coverHeight - watermarkDims.height) / 2,
-      width: watermarkDims.width,
-      height: watermarkDims.height,
-      opacity: 0.2,
-    });
-
-    // --- PROCESS OTHER PAGES ---
-    pages.forEach((page, index) => {
-      const { width, height } = page.getSize();
-
-      // Header
-      const headerHeight = 50;
-      page.drawRectangle({ x: 0, y: height - headerHeight, width, height: headerHeight, color: rgb(0.204, 0.596, 0.859) });
-      page.drawText(`Header - Page ${index + 1}`, { x: width / 2 - 60, y: height - 30, size: 14, color: rgb(1, 1, 1) });
-
-      // Footer
-      const footerHeight = 40;
-      page.drawRectangle({ x: 0, y: 0, width, height: footerHeight, color: rgb(0.204, 0.596, 0.859) });
-      page.drawText(`Footer - Page ${index + 1}`, { x: width / 2 - 60, y: 15, size: 12, color: rgb(1, 1, 1) });
-
-      // Centered watermark
-      page.drawImage(watermarkImage, {
-        x: (width - watermarkDims.width) / 2,
-        y: (height - watermarkDims.height) / 2,
+      coverPage.drawImage(watermarkImage, {
+        x: (coverWidth - watermarkDims.width) / 2,
+        y: (coverHeight - watermarkDims.height) / 2,
         width: watermarkDims.width,
         height: watermarkDims.height,
         opacity: 0.2,
       });
-    });
 
-    const pdfBytes = await pdfDoc.save();
-    this.downloadPDF(pdfBytes, 'modified-' + this.selectedFile.name);
-    alert('PDF generated successfully!');
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    alert(`Failed to generate PDF: ${(error as Error).message}`);
-  }
-}
+      // -----------------------------
+      // ⭐ 2. REPLACE EACH PAGE WITH A NEW PAGE
+      // -----------------------------
+      for (let i = 1; i < originalPages.length + 1; i++) {
+        const oldPage = originalPages[i - 1];
+        const { width, height } = oldPage.getSize();
 
+        // Extract old page content as embedded page
+        const embedded = await pdfDoc.embedPage(oldPage);
 
-  
-  private async loadWatermarkImage(pdfDoc: PDFDocument) {
-    try {
-      // Try to load from CDN with multiple proxies
-      const watermarkUrl = 'https://cdn.testbook.com/article2pdf/v1/tb-logo-highres.png';
-      
-      // Try direct fetch first
-      try {
-        const response = await fetch(watermarkUrl);
-        if (response.ok) {
-          const imageBytes = await response.arrayBuffer();
-          return await pdfDoc.embedPng(imageBytes);
-        }
-      } catch (e) {
-        console.log('Direct fetch failed, trying alternative...');
+        // Create new page (THIS FIXES YOUR PROBLEM)
+        const newPage = pdfDoc.insertPage(i, [width, height]);
+
+        // Draw original page FIRST
+        newPage.drawPage(embedded, { x: 0, y: 0, width, height });
+
+        // HEADER (always on top)
+        const headerHeight = 50;
+        newPage.drawRectangle({
+          x: 0, y: height - headerHeight,
+          width, height: headerHeight,
+          color: rgb(0.204, 0.596, 0.859)
+        });
+
+        newPage.drawText(`Header - Page ${i}`, {
+          x: width / 2 - 60,
+          y: height - 30,
+          size: 14,
+          color: rgb(1, 1, 1)
+        });
+
+        // FOOTER (always on top)
+        const footerHeight = 40;
+        newPage.drawRectangle({
+          x: 0, y: 0,
+          width, height: footerHeight,
+          color: rgb(0.204, 0.596, 0.859)
+        });
+
+        newPage.drawText(`Footer - Page ${i}`, {
+          x: width / 2 - 60,
+          y: 15,
+          size: 12,
+          color: rgb(1, 1, 1)
+        });
+
+        // WATERMARK (still below header/footer)
+        newPage.drawImage(watermarkImage, {
+          x: (width - watermarkDims.width) / 2,
+          y: (height - watermarkDims.height) / 2,
+          width: watermarkDims.width,
+          height: watermarkDims.height,
+          opacity: 0.2,
+        });
+
+        // Remove the original old page
+        pdfDoc.removePage(i + 1);
       }
-      
-      // Fallback: Create a simple text-based watermark using canvas
-      console.log('Using fallback watermark generation...');
-      return await this.createFallbackWatermark(pdfDoc);
-      
+
+      // -----------------------------
+      // SAVE PDF
+      // -----------------------------
+      const pdfBytes = await pdfDoc.save();
+      this.downloadPDF(pdfBytes, 'modified-' + this.selectedFile.name);
+
+      alert('PDF generated successfully!');
     } catch (error) {
-      console.error('Error loading watermark, using fallback:', error);
+      console.error('Error generating PDF:', error);
+      alert(`Failed to generate PDF: ${(error as Error).message}`);
+    }
+  }
+
+  // -----------------------------
+  // LOAD WATERMARK IMAGE
+  // -----------------------------
+  private async loadWatermarkImage(pdfDoc: PDFDocument) {
+    const url = 'https://cdn.testbook.com/article2pdf/v1/tb-logo-highres.png';
+
+    try {
+      const response = await fetch(url);
+      const imageBytes = await response.arrayBuffer();
+      return await pdfDoc.embedPng(imageBytes);
+    } catch (error) {
+      console.warn('Watermark load failed. Using fallback.');
       return await this.createFallbackWatermark(pdfDoc);
     }
   }
-  
+
   private async createFallbackWatermark(pdfDoc: PDFDocument) {
-    // Create a simple watermark image using canvas
     const canvas = document.createElement('canvas');
     canvas.width = 400;
     canvas.height = 400;
     const ctx = canvas.getContext('2d')!;
-    
-    // Draw watermark text
-    ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+
+    ctx.fillStyle = 'rgba(128,128,128,0.5)';
     ctx.font = 'bold 60px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.save();
     ctx.translate(200, 200);
     ctx.rotate(Math.PI / 4);
     ctx.fillText('WATERMARK', 0, 0);
-    ctx.restore();
-    
-    // Convert to PNG and embed
+
     const dataUrl = canvas.toDataURL('image/png');
-    const base64Data = dataUrl.split(',')[1];
-    const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    
-    return await pdfDoc.embedPng(imageBytes);
+    const base64 = dataUrl.split(',')[1];
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+
+    return await pdfDoc.embedPng(bytes);
   }
-  
-  private async createCoverPage(watermarkImage: any): Promise<PDFDocument> {
-  const coverDoc = await PDFDocument.create();
-  const coverPage = coverDoc.addPage([595.28, 841.89]); // A4 size in points
-  const { width, height } = coverPage.getSize();
 
-  // Cover background
-  coverPage.drawRectangle({
-    x: 0,
-    y: 0,
-    width: width,
-    height: height,
-    color: rgb(0.204, 0.596, 0.859),
-  });
-
-  // Cover title
-  coverPage.drawText('COVER PAGE TITLE', {
-    x: width / 2 - 120,
-    y: height / 2 + 100,
-    size: 30,
-    color: rgb(1, 1, 1),
-  });
-
-  // Cover subtitle
-  coverPage.drawText('This is the subtitle of the cover page', {
-    x: width / 2 - 140,
-    y: height / 2 + 60,
-    size: 16,
-    color: rgb(1, 1, 1),
-  });
-
-  // --- ADD CENTERED WATERMARK ---
-  const watermarkDims = {
-    width: watermarkImage.width,
-    height: watermarkImage.height
-  };
-  const watermarkX = (width - watermarkDims.width) / 2;
-  const watermarkY = (height - watermarkDims.height) / 2;
-
-  coverPage.drawImage(watermarkImage, {
-    x: watermarkX,
-    y: watermarkY,
-    width: watermarkDims.width,
-    height: watermarkDims.height,
-    opacity: 0.2
-  });
-
-  return coverDoc;
-}
-
-  
   private downloadPDF(pdfBytes: Uint8Array, filename: string) {
     const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
     const link = document.createElement('a');
