@@ -7,48 +7,24 @@
     <p>This page will appear as the first page of your PDF</p>
   </div>
 
-  <!-- File Upload Section -->
-  <div class="card p-4 mt-4">
-    <h3 class="text-center mb-4">Upload Your PDF</h3>
+  <!-- Generate PDF Section -->
+  <div class="card p-4 mt-4 text-center">
+    <h3 class="mb-4">Generate PDF from CDN</h3>
     
-    <div class="mb-3">
-      <label for="pdfFile" class="form-label fw-bold">Step 1: Choose a PDF file</label>
-      <input 
-        type="file" 
-        id="pdfFile"
-        accept="application/pdf" 
-        (change)="onFileSelected($event)" 
-        class="form-control form-control-lg"
-      />
-      <small class="text-muted">Click "Choose File" or "Browse" button above to select a PDF from your computer</small>
-    </div>
-    
-    <div *ngIf="selectedFile" class="alert alert-success">
-      <strong>✓ File Selected:</strong> {{ selectedFile.name }} 
-      <br>
-      <strong>Size:</strong> {{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB
-    </div>
-    
-    <div class="text-center mt-3">
-      <button 
-        class="btn btn-success btn-lg" 
-        (click)="generatePDF()" 
-        [disabled]="!selectedFile"
-      >
-        <span *ngIf="selectedFile">Step 2: Generate PDF with Cover & Watermark</span>
-        <span *ngIf="!selectedFile">Please Select a PDF File First</span>
-      </button>
-    </div>
+    <button 
+      class="btn btn-success btn-lg"
+      (click)="generatePDFFromCDN()"
+    >
+      Generate PDF with Cover & Watermark
+    </button>
   </div>
 
   <!-- Instructions -->
   <div class="alert alert-info mt-4">
     <h5>Instructions:</h5>
     <ol>
-      <li>Click the "Choose File" or "Browse" button above</li>
-      <li>Select a PDF file from your computer</li>
-      <li>Click "Generate PDF with Cover & Watermark" button</li>
-      <li>Your modified PDF will be downloaded automatically</li>
+      <li>Click the "Generate PDF with Cover & Watermark" button</li>
+      <li>The modified PDF will be downloaded automatically</li>
     </ol>
   </div>
 </div>
